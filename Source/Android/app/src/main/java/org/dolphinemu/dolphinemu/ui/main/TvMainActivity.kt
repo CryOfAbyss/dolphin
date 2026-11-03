@@ -2,7 +2,6 @@
 
 package org.dolphinemu.dolphinemu.ui.main
 
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.core.content.ContextCompat
@@ -32,7 +31,6 @@ import org.dolphinemu.dolphinemu.model.TvSettingsItem
 import org.dolphinemu.dolphinemu.services.GameFileCacheManager
 import org.dolphinemu.dolphinemu.ui.platform.PlatformTab
 import org.dolphinemu.dolphinemu.utils.DirectoryInitialization
-import org.dolphinemu.dolphinemu.utils.FileBrowserHelper
 import org.dolphinemu.dolphinemu.utils.PermissionsHandler
 import org.dolphinemu.dolphinemu.utils.StartupHandler
 import org.dolphinemu.dolphinemu.utils.TvUtil
@@ -50,7 +48,9 @@ class TvMainActivity : FragmentActivity(), MainView, OnRefreshListener {
     private lateinit var binding: ActivityTvMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen().setKeepOnScreenCondition { !DirectoryInitialization.areDolphinDirectoriesReady() }
+        installSplashScreen().setKeepOnScreenCondition {
+            !DirectoryInitialization.areDolphinDirectoriesReady()
+        }
 
         super.onCreate(savedInstanceState)
         binding = ActivityTvMainBinding.inflate(layoutInflater)
@@ -119,6 +119,14 @@ class TvMainActivity : FragmentActivity(), MainView, OnRefreshListener {
      */
     override fun setVersionString(version: String) {
         browseFragment?.title = version
+    }
+
+    /**
+     * The selected game name is only used by the custom touch-screen menu.
+     * Android TV continues using its original game list interface.
+     */
+    override fun setSelectedGameName(name: String?) {
+        // Not needed for the Android TV interface.
     }
 
     override fun launchSettingsActivity(menuTag: MenuTag?) {
@@ -198,7 +206,10 @@ class TvMainActivity : FragmentActivity(), MainView, OnRefreshListener {
         browseFragment!!.adapter = rowsAdapter
     }
 
-    private fun buildGamesRow(platformTab: PlatformTab, gameFiles: Collection<GameFile?>): ListRow? {
+    private fun buildGamesRow(
+        platformTab: PlatformTab,
+        gameFiles: Collection<GameFile?>
+    ): ListRow? {
         // If there are no games, don't return a Row.
         if (gameFiles.isEmpty()) {
             return null
@@ -214,7 +225,7 @@ class TvMainActivity : FragmentActivity(), MainView, OnRefreshListener {
         // Create a header for this row.
         val header = HeaderItem(platformTab.toInt().toLong(), getString(platformTab.headerName))
 
-        // Create the row, passing it the filled adapter and the header, and give it to the master adapter.
+        // Create the row, passing it to the master adapter.
         return ListRow(header, row)
     }
 
