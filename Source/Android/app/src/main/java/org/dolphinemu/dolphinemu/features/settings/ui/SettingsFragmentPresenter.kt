@@ -2856,4 +2856,173 @@ class SettingsFragmentPresenter(
                         context,
                         InputMappingIntSetting(attachmentSetting),
                         R.string.wiimote_extensions,
-           
+                        0,
+                        R.array.wiimoteExtensionsEntries,
+                        R.array.wiimoteExtensionsValues,
+                        MenuTag.getWiimoteExtensionMenuTag(controllerNumber)
+                    )
+                )
+            }
+
+            val numericSettingCount = group.getNumericSettingCount()
+            for (j in 0 until numericSettingCount) {
+                addNumericSetting(sl, group.getNumericSetting(j))
+            }
+        }
+    }
+
+    private fun addNumericSetting(sl: ArrayList<SettingsItem>, setting: NumericSetting) {
+        when (setting.getType()) {
+            NumericSetting.TYPE_DOUBLE -> sl.add(
+                FloatSliderSetting(
+                    InputMappingDoubleSetting(setting),
+                    setting.getUiName(),
+                    "",
+                    ceil(setting.getDoubleMin()).toFloat(),
+                    floor(setting.getDoubleMax()).toFloat(),
+                    setting.getUiSuffix(),
+                    0.5f,
+                    true
+                )
+            )
+
+            NumericSetting.TYPE_BOOLEAN -> sl.add(
+                SwitchSetting(
+                    InputMappingBooleanSetting(setting),
+                    setting.getUiName(),
+                    setting.getUiDescription()
+                )
+            )
+        }
+    }
+
+    fun updateOldControllerSettingsWarningVisibility() {
+        updateOldControllerSettingsWarningVisibility(menuTag.correspondingEmulatedController)
+    }
+
+    private fun updateOldControllerSettingsWarningVisibility(controller: EmulatedController) {
+        if (!shouldUpdateWarnings) {
+            return
+        }
+
+        val defaultDevice = controller.getDefaultDevice()
+
+        hasOldControllerSettings =
+            defaultDevice.startsWith("Android/") && defaultDevice.endsWith("/Touchscreen")
+
+        fragmentView.setOldControllerSettingsWarningVisibility(hasOldControllerSettings)
+    }
+
+    private fun loadDefaultControllerSettings(controller: EmulatedController) {
+        controller.loadDefaultSettings()
+        fragmentView.onControllerSettingsChanged()
+    }
+
+    private fun clearControllerSettings(controller: EmulatedController) {
+        controller.clearSettings()
+        fragmentView.onControllerSettingsChanged()
+    }
+
+    fun setAllLogTypes(value: Boolean) {
+        val settings = fragmentView.settings
+
+        for (logType in NativeLibrary.GetLogTypeNames()) {
+            AdHocBooleanSetting(
+                Settings.FILE_LOGGER, Settings.SECTION_LOGGER_LOGS, logType.first, false
+            ).setBoolean(settings!!, value)
+        }
+
+        fragmentView.adapter!!.notifyAllSettingsChanged()
+    }
+
+    private fun convertOnThread(f: BooleanSupplier) {
+        ThreadUtil.runOnThreadAndShowResult(
+            fragmentView.fragmentActivity,
+            R.string.wii_converting,
+            0,
+            { context.resources.getString(if (f.get()) R.string.wii_convert_success else R.string.wii_convert_failure) })
+    }
+
+    fun installDriver(uri: Uri) {
+        val context = this.context.applicationContext
+        CoroutineScope(Dispatchers.IO).launch {
+            val stream = context.contentResolver.openInputStream(uri)
+            if (stream == null) {
+                GpuDriverHelper.uninstallDriver()
+                withContext(Dispatchers.Main) {
+                    fragmentView.onDriverInstallDone(GpuDriverInstallResult.FileNotFound)
+                }
+                return@launch
+            }
+
+            val result = GpuDriverHelper.installDriver(stream)
+            withContext(Dispatchers.Main) {
+                with(this@SettingsFragmentPresenter) {
+                    this.gpuDriver = GpuDriverHelper.getInstalledDriverMetadata()
+                        ?: GpuDriverHelper.getSystemDriverMetadata(context) ?: return@withContext
+                    this.libNameSetting.setString(this.settings!!, this.gpuDriver!!.libraryName)
+                }
+                fragmentView.onDriverInstallDone(result)
+            }
+        }
+    }
+
+    fun useSystemDriver() {
+        CoroutineScope(Dispatchers.IO).launch {
+            GpuDriverHelper.uninstallDriver()
+            withContext(Dispatchers.Main) {
+                with(this@SettingsFragmentPresenter) {
+                    this.gpuDriver = GpuDriverHelper.getInstalledDriverMetadata()
+                        ?: GpuDriverHelper.getSystemDriverMetadata(context.applicationContext)
+                    this.libNameSetting.setString(this.settings!!, "")
+                }
+                fragmentView.onDriverUninstallDone()
+            }
+        }
+    }
+
+    companion object {
+        const val ARG_CONTROLLER_TYPE = "controller_type"
+        const val ARG_SERIALPORT1_TYPE = "serialport1_type"
+
+        private data class SearchableSetting(
+            val name: String,
+            val description: String,
+            val menuTag: MenuTag,
+            val navigationExtras: Bundle?,
+            val position: Int,
+            val normalizedName: String,
+            val normalizedCategory: String,
+            val normalizedSearchText: String
+        )
+
+        private data class SearchableMenu(
+            val menuTag: MenuTag,
+            val category: String,
+            val navigationExtras: Bundle?,
+            val settings: List<SettingsItem>
+        )
+
+        // Value obtained from LogLevel in Common/Logging/Log.h
+        private fun getLogVerbosityEntries(): Int {
+            // GetMaxLogLevel is effectively a constant, but we can't call it before loading
+            // the native library
+            return if (NativeLibrary.GetMaxLogLevel() == 5) {
+                R.array.logVerbosityEntriesMaxLevelDebug
+            } else {
+                R.array.logVerbosityEntriesMaxLevelInfo
+            }
+        }
+
+        // Value obtained from LogLevel in Common/Logging/Log.h
+        private fun getLogVerbosityValues(): Int {
+            // GetMaxLogLevel is effectively a constant, but we can't call it before loading
+            // the native library
+            return if (NativeLibrary.GetMaxLogLevel() == 5) {
+                R.array.logVerbosityValuesMaxLevelDebug
+            } else {
+                R.array.logVerbosityValuesMaxLevelInfo
+            }
+        }
+    }
+}
