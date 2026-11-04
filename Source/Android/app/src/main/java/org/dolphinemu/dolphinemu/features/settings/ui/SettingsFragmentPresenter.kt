@@ -1667,6 +1667,14 @@ class SettingsFragmentPresenter(
                 R.string.show_fps_description
             )
         )
+        sl.add(
+            SwitchSetting(
+                context,
+                BooleanSetting.SYSCONF_WIIMOTE_MOTOR,
+                R.string.wiimote_rumble,
+                0
+            )
+        )
     }
 
     private fun addEnhanceSettings(sl: ArrayList<SettingsItem>) {
