@@ -1582,6 +1582,9 @@ class SettingsFragmentPresenter(
         }, R.string.real_balance_board, 0))
     }
 
+    // NFS ProStreet: simplified Graphics page. Only the options needed for the game are listed.
+    // The original submenus (Enhancements, Hacks, Statistics, Advanced, GPU Drivers) are kept in
+    // the code below, they are just not shown from this page.
     private fun addGraphicsSettings(sl: ArrayList<SettingsItem>) {
         sl.add(HeaderSetting(context, R.string.graphics_general, 0))
         sl.add(
@@ -1592,6 +1595,56 @@ class SettingsFragmentPresenter(
                 0,
                 R.array.videoBackendEntries,
                 R.array.videoBackendValues
+            )
+        )
+        sl.add(
+            SingleChoiceSetting(
+                context,
+                IntSetting.GFX_EFB_SCALE,
+                R.string.internal_resolution,
+                R.string.internal_resolution_description,
+                R.array.internalResolutionEntries,
+                R.array.internalResolutionValues
+            )
+        )
+        sl.add(
+            SingleChoiceSetting(
+                context,
+                IntSetting.GFX_MSAA,
+                R.string.FSAA,
+                R.string.FSAA_description,
+                R.array.FSAAEntries,
+                R.array.FSAAValues
+            )
+        )
+        sl.add(
+            SingleChoiceSetting(
+                context,
+                IntSetting.GFX_ENHANCE_MAX_ANISOTROPY,
+                R.string.anisotropic_filtering,
+                R.string.anisotropic_filtering_description,
+                R.array.anisotropicFilteringEntries,
+                R.array.anisotropicFilteringValues
+            )
+        )
+        sl.add(
+            SingleChoiceSetting(
+                context,
+                IntSetting.GFX_ENHANCE_FORCE_TEXTURE_FILTERING,
+                R.string.texture_filtering,
+                R.string.texture_filtering_description,
+                R.array.textureFilteringEntries,
+                R.array.textureFilteringValues
+            )
+        )
+        sl.add(
+            SingleChoiceSetting(
+                context,
+                IntSetting.GFX_ASPECT_RATIO,
+                R.string.aspect_ratio,
+                0,
+                R.array.aspectRatioEntries,
+                R.array.aspectRatioValues
             )
         )
         sl.add(
@@ -1609,51 +1662,11 @@ class SettingsFragmentPresenter(
         sl.add(
             SwitchSetting(
                 context,
-                BooleanSetting.GFX_WAIT_FOR_SHADERS_BEFORE_STARTING,
-                R.string.wait_for_shaders,
-                R.string.wait_for_shaders_description
+                BooleanSetting.GFX_SHOW_FPS,
+                R.string.show_fps,
+                R.string.show_fps_description
             )
         )
-        sl.add(
-            SingleChoiceSetting(
-                context,
-                IntSetting.GFX_ASPECT_RATIO,
-                R.string.aspect_ratio,
-                0,
-                R.array.aspectRatioEntries,
-                R.array.aspectRatioValues
-            )
-        )
-
-        sl.add(HeaderSetting(context, R.string.graphics_more_settings, 0))
-        sl.add(
-            SubmenuSetting(
-                context, R.string.enhancements_submenu, MenuTag.ENHANCEMENTS
-            )
-        )
-        sl.add(
-            SubmenuSetting(
-                context, R.string.hacks_submenu, MenuTag.HACKS
-            )
-        )
-        sl.add(
-            SubmenuSetting(
-                context, R.string.statistics_submenu, MenuTag.STATISTICS
-            )
-        )
-        sl.add(
-            SubmenuSetting(
-                context, R.string.advanced_graphics_submenu, MenuTag.ADVANCED_GRAPHICS
-            )
-        )
-
-        if (this.gpuDriver != null && this.gameId.isNullOrEmpty() && NativeLibrary.IsUninitialized() && GpuDriverHelper.supportsCustomDriverLoading()) {
-            sl.add(
-                SubmenuSetting(
-                    context, R.string.gpu_driver_submenu, MenuTag.GPU_DRIVERS
-                )
-            )
-        }
     }
 
     private fun addEnhanceSettings(sl: ArrayList<SettingsItem>) {
@@ -2843,173 +2856,4 @@ class SettingsFragmentPresenter(
                         context,
                         InputMappingIntSetting(attachmentSetting),
                         R.string.wiimote_extensions,
-                        0,
-                        R.array.wiimoteExtensionsEntries,
-                        R.array.wiimoteExtensionsValues,
-                        MenuTag.getWiimoteExtensionMenuTag(controllerNumber)
-                    )
-                )
-            }
-
-            val numericSettingCount = group.getNumericSettingCount()
-            for (j in 0 until numericSettingCount) {
-                addNumericSetting(sl, group.getNumericSetting(j))
-            }
-        }
-    }
-
-    private fun addNumericSetting(sl: ArrayList<SettingsItem>, setting: NumericSetting) {
-        when (setting.getType()) {
-            NumericSetting.TYPE_DOUBLE -> sl.add(
-                FloatSliderSetting(
-                    InputMappingDoubleSetting(setting),
-                    setting.getUiName(),
-                    "",
-                    ceil(setting.getDoubleMin()).toFloat(),
-                    floor(setting.getDoubleMax()).toFloat(),
-                    setting.getUiSuffix(),
-                    0.5f,
-                    true
-                )
-            )
-
-            NumericSetting.TYPE_BOOLEAN -> sl.add(
-                SwitchSetting(
-                    InputMappingBooleanSetting(setting),
-                    setting.getUiName(),
-                    setting.getUiDescription()
-                )
-            )
-        }
-    }
-
-    fun updateOldControllerSettingsWarningVisibility() {
-        updateOldControllerSettingsWarningVisibility(menuTag.correspondingEmulatedController)
-    }
-
-    private fun updateOldControllerSettingsWarningVisibility(controller: EmulatedController) {
-        if (!shouldUpdateWarnings) {
-            return
-        }
-
-        val defaultDevice = controller.getDefaultDevice()
-
-        hasOldControllerSettings =
-            defaultDevice.startsWith("Android/") && defaultDevice.endsWith("/Touchscreen")
-
-        fragmentView.setOldControllerSettingsWarningVisibility(hasOldControllerSettings)
-    }
-
-    private fun loadDefaultControllerSettings(controller: EmulatedController) {
-        controller.loadDefaultSettings()
-        fragmentView.onControllerSettingsChanged()
-    }
-
-    private fun clearControllerSettings(controller: EmulatedController) {
-        controller.clearSettings()
-        fragmentView.onControllerSettingsChanged()
-    }
-
-    fun setAllLogTypes(value: Boolean) {
-        val settings = fragmentView.settings
-
-        for (logType in NativeLibrary.GetLogTypeNames()) {
-            AdHocBooleanSetting(
-                Settings.FILE_LOGGER, Settings.SECTION_LOGGER_LOGS, logType.first, false
-            ).setBoolean(settings!!, value)
-        }
-
-        fragmentView.adapter!!.notifyAllSettingsChanged()
-    }
-
-    private fun convertOnThread(f: BooleanSupplier) {
-        ThreadUtil.runOnThreadAndShowResult(
-            fragmentView.fragmentActivity,
-            R.string.wii_converting,
-            0,
-            { context.resources.getString(if (f.get()) R.string.wii_convert_success else R.string.wii_convert_failure) })
-    }
-
-    fun installDriver(uri: Uri) {
-        val context = this.context.applicationContext
-        CoroutineScope(Dispatchers.IO).launch {
-            val stream = context.contentResolver.openInputStream(uri)
-            if (stream == null) {
-                GpuDriverHelper.uninstallDriver()
-                withContext(Dispatchers.Main) {
-                    fragmentView.onDriverInstallDone(GpuDriverInstallResult.FileNotFound)
-                }
-                return@launch
-            }
-
-            val result = GpuDriverHelper.installDriver(stream)
-            withContext(Dispatchers.Main) {
-                with(this@SettingsFragmentPresenter) {
-                    this.gpuDriver = GpuDriverHelper.getInstalledDriverMetadata()
-                        ?: GpuDriverHelper.getSystemDriverMetadata(context) ?: return@withContext
-                    this.libNameSetting.setString(this.settings!!, this.gpuDriver!!.libraryName)
-                }
-                fragmentView.onDriverInstallDone(result)
-            }
-        }
-    }
-
-    fun useSystemDriver() {
-        CoroutineScope(Dispatchers.IO).launch {
-            GpuDriverHelper.uninstallDriver()
-            withContext(Dispatchers.Main) {
-                with(this@SettingsFragmentPresenter) {
-                    this.gpuDriver = GpuDriverHelper.getInstalledDriverMetadata()
-                        ?: GpuDriverHelper.getSystemDriverMetadata(context.applicationContext)
-                    this.libNameSetting.setString(this.settings!!, "")
-                }
-                fragmentView.onDriverUninstallDone()
-            }
-        }
-    }
-
-    companion object {
-        const val ARG_CONTROLLER_TYPE = "controller_type"
-        const val ARG_SERIALPORT1_TYPE = "serialport1_type"
-
-        private data class SearchableSetting(
-            val name: String,
-            val description: String,
-            val menuTag: MenuTag,
-            val navigationExtras: Bundle?,
-            val position: Int,
-            val normalizedName: String,
-            val normalizedCategory: String,
-            val normalizedSearchText: String
-        )
-
-        private data class SearchableMenu(
-            val menuTag: MenuTag,
-            val category: String,
-            val navigationExtras: Bundle?,
-            val settings: List<SettingsItem>
-        )
-
-        // Value obtained from LogLevel in Common/Logging/Log.h
-        private fun getLogVerbosityEntries(): Int {
-            // GetMaxLogLevel is effectively a constant, but we can't call it before loading
-            // the native library
-            return if (NativeLibrary.GetMaxLogLevel() == 5) {
-                R.array.logVerbosityEntriesMaxLevelDebug
-            } else {
-                R.array.logVerbosityEntriesMaxLevelInfo
-            }
-        }
-
-        // Value obtained from LogLevel in Common/Logging/Log.h
-        private fun getLogVerbosityValues(): Int {
-            // GetMaxLogLevel is effectively a constant, but we can't call it before loading
-            // the native library
-            return if (NativeLibrary.GetMaxLogLevel() == 5) {
-                R.array.logVerbosityValuesMaxLevelDebug
-            } else {
-                R.array.logVerbosityValuesMaxLevelInfo
-            }
-        }
-    }
-}
+           
